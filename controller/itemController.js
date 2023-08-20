@@ -114,21 +114,18 @@ module.exports.createNewItem = async (req, res) => {
   }
 };
 
-// module.exports.getItemsById = async (req, res) => {
-//   try {
-//     const { id } = req.params;
+module.exports.getItemsByName = async (req, res) => {
+  try {
+    const { name } = req.params;
 
-//     const item = await itemModel
-//       .findOne({ _id: id })
-//       .lean()
-//       .populate("userIds");
-//     if (item) {
-//       return res.send(item);
-//     }
-//   } catch (error) {
-//     console.log({ error });
-//   }
-// };
+    const item = await itemModel.find({ name }).lean();
+    if (item) {
+      return res.send(item);
+    }
+  } catch (error) {
+    console.log({ error });
+  }
+};
 
 module.exports.getRequestItemsByName = async (req, res) => {
   try {
@@ -149,7 +146,7 @@ module.exports.getRequestItemsByName = async (req, res) => {
 
 module.exports.getAllItems = async (req, res) => {
   try {
-    const items = await itemModel.find().lean();
+    const items = await itemModel.find().lean().populate("userIds");
 
     if (!items) {
       return res.status(401).send("No item found");
@@ -173,7 +170,7 @@ module.exports.getVisitCount = async (req, res) => {
           { new: true }
         )
         .lean();
-      return res.status(200).send({count : updatedVisitCounts.visitCount});
+      return res.status(200).send({ count: updatedVisitCounts.visitCount });
     }
   } catch (error) {
     console.log({ error });
@@ -301,7 +298,7 @@ module.exports.getRequestedItemByQuery = async (req, res) => {
   try {
     const userId = req.query.id;
 
-    const requestedItems = await requestItemModel.find({ userId });
+    const requestedItems = await requestItemModel.find({ userId }).lean();
 
     res.send(requestedItems);
   } catch (error) {
@@ -331,5 +328,144 @@ module.exports.ReturnItem = async (req, res) => {
     res.send("Item retrieved");
   } catch (error) {
     console.log({ error });
+  }
+};
+
+module.exports.editSSID = async (req, res) => {
+  try {
+    const { ssid, modifiedssid } = req.body;
+    const item = await itemModel.findOne({ ssid }).lean();
+
+    if (item.Status) {
+      return res.status(400).send({ msg: "Item currenlty occupied" });
+    }
+
+    if (item) {
+      await itemModel.findOneAndUpdate(
+        {
+          _id: item._id,
+        },
+        {
+          $set: {
+            ssid: modifiedssid,
+          },
+        }
+      );
+    }
+    return res.send("Item modified");
+  } catch (error) {
+    console.log({ error });
+  }
+};
+
+module.exports.deleteSSID = async (req, res) => {
+  try {
+    const { ssid } = req.params;
+
+    const item = await itemModel.findOne({ ssid }).lean();
+    // console.log(item);
+    if (!item) {
+      res.status(404).send({ msg: "Item not found" });
+      return; // Exit early if item is not found
+    }
+
+    if (item.Status) {
+      return res.status(400).send({ msg: "Item currently occupied" });
+    }
+
+    if (item) {
+      const items = await itemModel.find({ name: item.name }).lean();
+      if (items.length == 0) {
+        await countModel.deleteMany({ itemName: item.name });
+      }
+      await itemModel.findByIdAndDelete({
+        _id: item._id,
+      });
+      return res.status(200).send({ msg: "Item deleted successfully" });
+    }
+  } catch (error) {
+    console.log({ error });
+  }
+};
+
+module.exports.deleteInBulk = async (req, res) => {
+  try {
+    const { name } = req.params;
+    const item = await itemModel.find({ name });
+    if (!item) {
+      return res.status(404).send({ msg: "No items found" });
+    }
+    let isOccupied = false;
+
+    for (const i of item) {
+      if (i.Status) {
+        isOccupied = true;
+        break;
+      }
+    }
+
+    if (isOccupied) {
+      return res.status(401).send({ msg: "Item is currently occupied" });
+    }
+    const result = await itemModel.deleteMany({ name });
+    if (result.deletedCount) {
+      await countModel.deleteMany({ itemName: name });
+      return res.send("Item deleted sucessfuly");
+    }
+  } catch (error) {
+    console.log({ error });
+  }
+};
+
+module.exports.editInBulk = async (req, res) => {
+  try {
+    const { orginalName, name, description, supplier, image } = req.body;
+
+    const itemsToUpdate = await itemModel.find({ name: orginalName }).lean();
+
+    if (itemsToUpdate.length === 0) {
+      return res
+        .status(404)
+        .send({ msg: "No items found with the given name." });
+    }
+    const imageCloud = await cloudinary.uploader.upload(image, {
+      folder: "items",
+    });
+    const result = await itemModel.updateMany(
+      { name: orginalName },
+      {
+        $set: {
+          name,
+          description,
+          supplier,
+          image: {
+            public_id: imageCloud.public_id,
+            url: imageCloud.secure_url,
+          },
+        },
+      }
+    );
+
+    await countModel.updateMany(
+      { itemName: orginalName },
+      {
+        $set: {
+          itemName: name,
+        },
+      }
+    );
+    console.log(result);
+    if (result.modifiedCount === 0) {
+      return res
+        .status(404)
+        .send({ msg: "No items found with the given name." });
+    }
+
+    return res.send(result);
+  } catch (error) {
+    console.error(error);
+    return res
+      .status(500)
+      .send({ msg: "An error occurred while processing your request." });
   }
 };

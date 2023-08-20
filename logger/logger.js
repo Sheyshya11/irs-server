@@ -7,7 +7,7 @@ require("dotenv").config();
 
 const fileRotateTransport = new transports.DailyRotateFile({
   filename: "logs/rotate-%DATE%.log",
-  datePattern: "YYYY-MM-DD-HH",
+  datePattern: "YYYY-MM-DD",
   zippedArchive: true,
   maxFiles: "30d",
   auditFile: "logs/audit-log.json",
