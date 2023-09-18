@@ -1,6 +1,5 @@
 const allowedOrigin = [
-   'http://localhost:3000',
-   "https://requisition.vercel.app"
+   'requisition.vercel.app',
  
 ]
 

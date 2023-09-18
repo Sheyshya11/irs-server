@@ -145,7 +145,7 @@ module.exports.loginWithGoogle = async (req, res) => {
   try {
     const { method, originalUrl } = req;
     const apimessage = `[${method}] ${originalUrl}`;
-  
+
     if (req.body.googleAccessToken) {
       const { googleAccessToken } = req.body;
 
@@ -205,7 +205,9 @@ module.exports.loginWithGoogle = async (req, res) => {
         if (!existingUser.password) {
           return res.send({ accessToken: accessToken, passwordExist: false });
         }
-        logger.info(`${apimessage} ${existingUser.username} Successfully logged in`);
+        logger.info(
+          `${apimessage} ${existingUser.username} Successfully logged in`
+        );
         return res
           .status(200)
           .send({ accessToken: accessToken, passwordExist: true });
@@ -239,7 +241,7 @@ module.exports.register = async (req, res) => {
     const existEmail = await userModel.findOne({ email }).lean().exec();
     if (existEmail) {
       logger.error(`${apimessage} Please enter a unique email`);
-      return res.send({ msg: "Please enter a unique email" });
+      return res.status(400).send({ msg: "Please enter a unique email" });
     }
 
     if (password) {
@@ -275,7 +277,7 @@ module.exports.signupwithgoogle = async (req, res) => {
   try {
     const { method, originalUrl } = req;
     const apimessage = `[${method}] ${originalUrl}`;
-  
+
     if (req.body.googleAccessToken) {
       const { googleAccessToken } = req.body;
 
@@ -288,7 +290,6 @@ module.exports.signupwithgoogle = async (req, res) => {
         }
       );
 
-   
       if (response) {
         const email = response.data.email;
         const firstname = response.data.given_name;
@@ -316,4 +317,3 @@ module.exports.signupwithgoogle = async (req, res) => {
     console.log({ error });
   }
 };
-
