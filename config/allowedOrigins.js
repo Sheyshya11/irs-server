@@ -1,5 +1,5 @@
 const allowedOrigin = [
-   'https://requisition.vercel.app/',
+   'https://requisition.vercel.app',
  
 ]
 
